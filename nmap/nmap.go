@@ -52,9 +52,10 @@ func guardarLog(hosts []registroHost) error {
 }
 
 // Ejecuta el comando Nmap y devuelve la salida en texto.
-func escanearRed() (string, error) {
-	// Comando: "sudo nmap -O -p 22,80,443 192.168.1.0/24".
-	cmd := exec.Command("sudo", "nmap", "-O", "-p", "22,80,443", "192.168.1.0/24")
+func escanearRed(subred string) (string, error) {
+	// Para puertos: "sudo nmap -O -p 22,80,443 192.168.1.0/24".
+	// RED FEMPA_alumno: 10.10.24.0/24, cambiar.
+	cmd := exec.Command("sudo", "nmap", "-O", subred)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", err
@@ -95,21 +96,21 @@ func filtrarSalida(output string) map[string]registroHost {
 				hostsFound[ip] = registroHost{
 					IP:        ip,
 					Equipo:  equipo,
-					Sistema:        "",
+					Sistema: "Desconocido",
 					Puertos:     []string{},
 					FirstSeen: time.Now().Format(time.RFC3339),
 					LastSeen:  time.Now().Format(time.RFC3339),
 					Estado:    "conectado",
 				}
 			}
-		} else if strings.Contains(line, "Sistema details:") {
+		} else if strings.Contains(line, "OS details:") {
 			if currentHost != "" {
 				match := reOS.FindStringSubmatch(line)
 				if len(match) > 0 {
 					entry := hostsFound[currentHost]
 					entry.Sistema = strings.TrimSpace(match[1])
 					hostsFound[currentHost] = entry
-				}
+				} 
 			}
 		} else if rePort.MatchString(line) {
 			if currentHost != "" {
@@ -143,6 +144,15 @@ func existeHost(scanned map[string]registroHost, ip string) bool {
 }
 
 func main() {
+
+	// Verificar que se pasa el argumento.
+	if len(os.Args) < 2 {
+		log.Fatal("Se requiere una dirección de red como argumento... \nEjemplo: 'go run main.go 192.168.1.0/24')")
+	}
+
+	// Obtener la subred del argumento.
+	subred := os.Args[1]
+
 	// Cargamos log existente o creamos uno nuevo.
 	logEntries, err := cargarLog()
 	if err != nil {
@@ -152,7 +162,7 @@ func main() {
 	// Ejecutamos escaneos de Nmap cada minuto.
 	for {
 		fmt.Println("Ejecutando Nmap...")
-		output, err := escanearRed()
+		output, err := escanearRed(subred)
 		if err != nil {
 			log.Printf("Error ejecutando Nmap: %v", err)
 		} else {
@@ -168,7 +178,7 @@ func main() {
 					logEntries[idx].LastSeen = now
 				} else {
 					// El host no tiene registro conectado, se crea uno nuevo.
-					fmt.Printf("Nuevo host detectado: %s\n", ip)
+					fmt.Printf("Nuevo host detectado: %s\n Nombre del equipo: %s\n", ip, scannedEntry.Equipo)
 					logEntries = append(logEntries, scannedEntry)
 				}
 			}

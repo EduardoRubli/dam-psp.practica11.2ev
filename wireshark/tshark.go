@@ -21,7 +21,7 @@ type Registro struct {
 }
 
 func main() {
-	// Canal para enviar registros a guardar
+	// Canal para enviar registros.
 	regChan := make(chan Registro)
 	var wg sync.WaitGroup
 
@@ -32,7 +32,7 @@ func main() {
 		guardarRegistros(regChan)
 	}()
 
-	// Lanzar la captura en una gorutina
+	// Lanzamos captura como gorutina.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -50,7 +50,8 @@ func main() {
 
 // Obtiene hostname a partir de ip con Nmap.
 func obtenerHostname(ip string) string {
-    cmdNmap := exec.Command("sh", "-c", "nmap -sn -PR " + ip + " | awk '/report/{print $5}'")
+    // Importante, siempre es má seguro -R que -PR.
+    cmdNmap := exec.Command("sh", "-c", "nmap -sn -R " + ip + " | awk '/report/{print $5}'")
     output, err := cmdNmap.Output()
     if err != nil {
     	log.Printf("Error ejecutando Nmap: %v", err)
@@ -68,7 +69,7 @@ func captura(regChan chan Registro) error {
 	// `-T fields`: Muestra la salida en formato de campos separados por tabulador.
 	// `-e ip.src`: Extrae la IP del dispositivo que realiza la consulta DNS.
 	// `-e dns.qry.name`: Extrae el nombre de dominio solicitado
-	cmdShark := exec.Command("tshark", "-i", "wlo1", "-Y", "dns.flags.response == 0 && !dns.qry.name.len == 0", "-T", "fields", "-e", "ip.src", "-e", "dns.qry.name")
+	cmdShark := exec.Command("sudo", "tshark", "-i", "wlo1", "-Y", "dns.flags.response == 0 && !dns.qry.name.len == 0", "-T", "fields", "-e", "ip.src", "-e", "dns.qry.name")
 	stdout, err := cmdShark.StdoutPipe()
 	if err != nil {
 		return err
@@ -119,7 +120,7 @@ func captura(regChan chan Registro) error {
 // Recibe registros del canal y los guarda en un log.
 func guardarRegistros(regChan chan Registro) {
 	// Abre o crea el archivo de log en modo append.
-	f, err := os.OpenFile("log.json", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile("TsharkLog.json", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatalf("Error al abrir el archivo de log: %v", err)
 	}
