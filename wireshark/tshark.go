@@ -50,7 +50,11 @@ func main() {
 
 // Obtiene hostname a partir de ip con Nmap.
 func obtenerHostname(ip string) string {
-    // Importante, siempre es má seguro -R que -PR.
+    // "sh -c": Ejecuta el comando en una shell.
+    // "-sn": Realiza un escaneo de ping (desactiva el escaneo de puertos).
+    // "-R": Siempre realiza resolución DNS inversa en las direcciones IP encontradas.
+    // ip: Variable que contiene la dirección IP o rango a escanear.
+    // "| awk '/report/{print $5}'": Filtra la salida para mostrar solo los nombres de host.
     cmdNmap := exec.Command("sh", "-c", "nmap -sn -R " + ip + " | awk '/report/{print $5}'")
     output, err := cmdNmap.Output()
     if err != nil {
@@ -69,7 +73,7 @@ func captura(regChan chan Registro) error {
 	// `-T fields`: Muestra la salida en formato de campos separados por tabulador.
 	// `-e ip.src`: Extrae la IP del dispositivo que realiza la consulta DNS.
 	// `-e dns.qry.name`: Extrae el nombre de dominio solicitado
-	cmdShark := exec.Command("sudo", "tshark", "-i", "wlo1", "-Y", "dns.flags.response == 0 && !dns.qry.name.len == 0", "-T", "fields", "-e", "ip.src", "-e", "dns.qry.name")
+	cmdShark := exec.Command("tshark", "-l", "-i", "wlo1", "-Y", "dns.flags.response == 0 && !dns.qry.name.len == 0", "-T", "fields", "-e", "ip.src", "-e", "dns.qry.name")
 	stdout, err := cmdShark.StdoutPipe()
 	if err != nil {
 		return err
@@ -127,6 +131,10 @@ func guardarRegistros(regChan chan Registro) {
 	defer f.Close()
 
 	for reg := range regChan {
+		// Muestra por pantalla un resumen del registro.
+		log.Printf("Petición desde IP: %s \nNombre del host => %s \nDominio visitado => %s",
+			reg.IpOrigen, reg.Equipo, reg.Dominio)
+	
 		bytes, err := json.MarshalIndent(reg, "", "  ")
 		if err != nil {
 			log.Printf("Error al serializar registro: %v", err)

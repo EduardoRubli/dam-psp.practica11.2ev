@@ -55,7 +55,7 @@ func guardarLog(hosts []registroHost) error {
 func escanearRed(subred string) (string, error) {
 	// Para puertos: "sudo nmap -O -p 22,80,443 192.168.1.0/24".
 	// RED FEMPA_alumno: 10.10.24.0/24, cambiar.
-	cmd := exec.Command("sudo", "nmap", "-O", subred)
+	cmd := exec.Command("sudo", "nmap", "-O", "10.10.24.0/24")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", err
